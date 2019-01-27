@@ -55,7 +55,7 @@ public class ApiController {
                     .field("publish_date",publishDate.getTime())
                     .endObject();
 
-            IndexResponse response = client.prepareIndex("article", "cms")
+            IndexResponse response = client.prepareIndex("test", "_doc")
                     .setSource(content)
                     .get();
 
@@ -160,12 +160,12 @@ public class ApiController {
             boolQuery.filter(rangeQuery);
         }
 
-        SearchRequestBuilder builder = client.prepareSearch("article")
-                .setTypes("cms")
+        SearchRequestBuilder builder = client.prepareSearch("article","test")
+//                .setTypes("cms","_doc") //type即将废弃
                 .setSearchType(SearchType.DFS_QUERY_THEN_FETCH)
                 .setQuery(boolQuery)
                 .setFrom(0)
-                .setSize(1);
+                .setSize(10);
 
         System.out.println(builder);
 
