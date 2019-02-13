@@ -1,5 +1,6 @@
 package win.yellowpal.esdemo.config;
 
+import org.elasticsearch.action.DocWriteResponse.Result;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexResponse;
@@ -15,6 +16,9 @@ import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.RangeQueryBuilder;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.sort.SortBuilder;
+import org.elasticsearch.search.sort.SortBuilders;
+import org.elasticsearch.search.sort.SortOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -37,10 +41,11 @@ public class ApiController {
 
     @PostMapping("/insert")
     @ResponseBody
-    public ResponseEntity insert(
+    public ResponseEntity<String> insert(
             @RequestParam("title") String title,
             @RequestParam("author") String author,
             @RequestParam("desc") String desc,
+            @RequestParam("url") String url,
             @RequestParam("publish_date")
             @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date publishDate
     ) {
@@ -50,45 +55,46 @@ public class ApiController {
                     .field("title", title)
                     .field("author", author)
                     .field("desc", desc)
+                    .field("url", url)
                     .field("publish_date", publishDate.getTime())
                     .endObject();
 
-            IndexResponse response = client.prepareIndex("test", "_doc")
+            IndexResponse response = client.prepareIndex("article", "cms")
                     .setSource(content)
                     .get();
 
-            return new ResponseEntity(response.getId(), HttpStatus.OK);
+            return new ResponseEntity<String>(response.getId(), HttpStatus.OK);
         } catch (IOException e) {
             e.printStackTrace();
-            return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<String>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
     }
 
     @GetMapping("/get")
     @ResponseBody
-    public ResponseEntity get(@RequestParam("id") String id) {
+    public ResponseEntity<Map<?, ?>> get(@RequestParam("id") String id) {
 
         GetResponse response = client.prepareGet("article", "cms", id).get();
         if (response.isSourceEmpty()) {
-            return new ResponseEntity(HttpStatus.NOT_FOUND);
+            return new ResponseEntity<Map<?, ?>>(HttpStatus.NOT_FOUND);
         } else {
-            return new ResponseEntity(response.getSource(), HttpStatus.OK);
+            return new ResponseEntity<Map<?, ?>>(response.getSource(), HttpStatus.OK);
         }
     }
 
     @DeleteMapping("/delete")
     @ResponseBody
-    public ResponseEntity delete(@RequestParam("id") String id) {
+    public ResponseEntity<Result> delete(@RequestParam("id") String id) {
 
         DeleteResponse response = client.prepareDelete("article", "cms", id).get();
 
-        return new ResponseEntity(response.getResult(), HttpStatus.OK);
+        return new ResponseEntity<Result>(response.getResult(), HttpStatus.OK);
     }
 
     @PostMapping("/update")
     @ResponseBody
-    public ResponseEntity update(
+    public ResponseEntity<Result> update(
             @RequestParam("id") String id,
             @RequestParam(value = "title", required = false) String title,
             @RequestParam(value = "author", required = false) String author,
@@ -120,20 +126,20 @@ public class ApiController {
             request.doc(content);
             UpdateResponse response = client.update(request).get();
 
-            return new ResponseEntity(response.getResult(), HttpStatus.OK);
+            return new ResponseEntity<Result>(response.getResult(), HttpStatus.OK);
         } catch (IOException e) {
             e.printStackTrace();
-            return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<Result>(HttpStatus.INTERNAL_SERVER_ERROR);
         } catch (Exception e) {
             e.printStackTrace();
-            return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<Result>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
     }
 
     @PostMapping("/search")
     @ResponseBody
-    public ResponseEntity search(
+    public ResponseEntity<Map<String, Object>> search(
             @RequestParam(value = "title", required = false) String title,
             @RequestParam(value = "from", required = false)
             @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date from,
@@ -158,16 +164,19 @@ public class ApiController {
             boolQuery.filter(rangeQuery);
         }
 
-        SearchRequestBuilder builder = client.prepareSearch("article", "test")
+//        SortBuilder sort = SortBuilders.fieldSort("publish_date");
+		SearchRequestBuilder builder = client.prepareSearch("article", "test")
 //                .setTypes("cms","_doc") //type即将废弃
                 .setSearchType(SearchType.DFS_QUERY_THEN_FETCH)
                 .setQuery(boolQuery)
+//                .addSort(sort)
+                .addSort("publish_date", SortOrder.DESC)
                 .setFrom(0)
                 .setSize(10);
 
         System.out.println(builder);
 
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM:dd HH:mm:ss");
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         List<Map<String, Object>> list = new ArrayList<>();
         SearchResponse response = builder.get();
         for (SearchHit hit : response.getHits()) {
@@ -179,6 +188,6 @@ public class ApiController {
         Map<String, Object> result = new HashMap<>();
         result.put("list", list);
         result.put("total", response.getHits().getTotalHits());//查询匹配总条数
-        return new ResponseEntity(result, HttpStatus.OK);
+        return new ResponseEntity<Map<String, Object>>(result, HttpStatus.OK);
     }
 }

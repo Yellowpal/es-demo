@@ -16,7 +16,7 @@ public class ElasticSearchConfig {
     @Bean
     public TransportClient client() throws UnknownHostException {
 
-        String ip = "192.168.43.120";
+        String ip = "127.0.0.1";
         InetAddress address = InetAddress.getByName(ip);
         TransportAddress node1 = new TransportAddress(address,9300);
 
