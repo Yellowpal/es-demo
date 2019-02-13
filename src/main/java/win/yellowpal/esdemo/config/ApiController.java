@@ -144,9 +144,16 @@ public class ApiController {
             @RequestParam(value = "from", required = false)
             @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date from,
             @RequestParam(value = "to", required = false)
-            @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date to
+            @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date to,
+            @RequestParam(value = "pageNum", required = false, defaultValue = "1") int pageNum
     ) {
 
+    	int size = 10;
+    	int index = 0;
+    	if(pageNum > 0){
+    		index = (pageNum - 1)*size;
+    	}
+    	
         BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
         if (title != null) {
             boolQuery.must(QueryBuilders.matchQuery("title", title));
@@ -170,9 +177,9 @@ public class ApiController {
                 .setSearchType(SearchType.DFS_QUERY_THEN_FETCH)
                 .setQuery(boolQuery)
 //                .addSort(sort)
-                .addSort("publish_date", SortOrder.DESC)
-                .setFrom(0)
-                .setSize(10);
+//                .addSort("publish_date", SortOrder.DESC)
+                .setFrom(index)
+                .setSize(size);
 
         System.out.println(builder);
 
